@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ResearchIQ — Multi-Agent Research Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Syne+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f7f5f0;--bg1:#ffffff;--bg2:#f0ede6;--bg3:#e8e4dc;
+  --ink:#1a1814;--ink2:#4a4640;--ink3:#8a8680;
+  --accent:#2d4a8a;--accent2:#4a6fb5;
+  --green:#2a7a4a;--amber:#c87820;--red:#b83838;
+  --serif:'Syne',sans-serif;--mono:'Syne Mono',monospace;
+}
+body{font-family:var(--serif);background:var(--bg);color:var(--ink);min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--ink);padding:0 32px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-size:16px;font-weight:700;color:#fff;letter-spacing:1px;}
+.logo span{color:#6a9fd8;}
+.health{font-family:var(--mono);font-size:11px;color:#6a9fd8;display:flex;align-items:center;gap:8px;}
+.hdot{width:7px;height:7px;border-radius:50%;background:#4ab870;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:380px 1fr;min-height:calc(100vh - 52px);}
+
+/* LEFT PANEL */
+.left{background:var(--bg1);border-right:1px solid var(--bg3);padding:28px 24px;display:flex;flex-direction:column;gap:20px;}
+.panel-title{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px;}
+
+/* FORM */
+.topic-input{width:100%;border:1.5px solid var(--bg3);border-radius:8px;padding:12px 14px;font-family:var(--serif);font-size:15px;color:var(--ink);background:var(--bg);outline:none;transition:border-color 0.2s;resize:none;}
+.topic-input:focus{border-color:var(--accent);}
+.depth-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.depth-btn{padding:8px;border:1.5px solid var(--bg3);border-radius:6px;background:var(--bg);font-family:var(--mono);font-size:11px;color:var(--ink2);text-align:center;cursor:pointer;transition:all 0.15s;}
+.depth-btn:hover{border-color:var(--accent);color:var(--accent);}
+.depth-btn.active{border-color:var(--accent);background:var(--accent);color:#fff;}
+.run-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--serif);font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.run-btn:hover{background:var(--accent2);}
+.run-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* AGENT STATUS */
+.agent-card{background:var(--bg);border:1.5px solid var(--bg3);border-radius:8px;padding:14px 16px;transition:all 0.3s;}
+.agent-card.active{border-color:var(--accent);background:#f0f4ff;}
+.agent-card.complete{border-color:var(--green);background:#f0faf4;}
+.agent-card.waiting{opacity:0.5;}
+.agent-header{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.agent-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.agent-name{font-size:14px;font-weight:600;}
+.agent-role{font-family:var(--mono);font-size:10px;color:var(--ink3);}
+.agent-status{margin-left:auto;font-family:var(--mono);font-size:10px;}
+.agent-msg{font-size:12px;color:var(--ink2);line-height:1.5;}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(45,74,138,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* HISTORY */
+.history-item{padding:10px 12px;border-radius:6px;border:1px solid var(--bg3);cursor:pointer;transition:background 0.15s;margin-bottom:6px;}
+.history-item:hover{background:var(--bg2);}
+.history-topic{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.history-meta{font-family:var(--mono);font-size:10px;color:var(--ink3);}
+
+/* RIGHT: REPORT */
+.right{padding:32px 40px;overflow-y:auto;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--ink3);}
+.empty-icon{font-size:56px;margin-bottom:16px;opacity:0.3;}
+.empty-title{font-size:20px;color:var(--ink2);margin-bottom:8px;}
+.empty-sub{font-size:14px;}
+
+/* PROGRESS BAR */
+.progress-bar{height:3px;background:var(--bg3);border-radius:2px;margin-bottom:32px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1s ease;}
+
+/* REPORT */
+.report-header{margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid var(--bg3);}
+.report-topic{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px;}
+.report-title{font-size:28px;font-weight:700;color:var(--ink);line-height:1.2;margin-bottom:12px;}
+.report-meta{display:flex;gap:16px;flex-wrap:wrap;}
+.report-badge{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;background:var(--bg2);color:var(--ink2);}
+
+/* MARKDOWN REPORT */
+.report-body{font-size:15px;line-height:1.8;color:var(--ink2);}
+.report-body h1,.report-body h2{font-size:20px;font-weight:700;color:var(--ink);margin:28px 0 12px;}
+.report-body h3{font-size:16px;font-weight:600;color:var(--ink);margin:20px 0 8px;}
+.report-body p{margin-bottom:16px;}
+.report-body ul,.report-body ol{padding-left:20px;margin-bottom:16px;}
+.report-body li{margin-bottom:6px;}
+.report-body strong{color:var(--ink);font-weight:600;}
+.report-body em{font-style:italic;}
+.report-body code{font-family:var(--mono);font-size:13px;background:var(--bg2);padding:2px 6px;border-radius:3px;}
+.report-body blockquote{border-left:3px solid var(--accent);padding-left:16px;color:var(--ink2);margin:16px 0;font-style:italic;}
+
+/* AGENT OUTPUTS TABS */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--bg3);margin-bottom:24px;}
+.tab{font-family:var(--mono);font-size:11px;padding:10px 18px;cursor:pointer;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.raw-output{font-size:13px;line-height:1.7;color:var(--ink2);white-space:pre-wrap;background:var(--bg);border:1px solid var(--bg3);border-radius:8px;padding:20px;}
+
+/* EXPORT BTN */
+.export-btn{margin-top:24px;padding:10px 20px;border:1.5px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);font-family:var(--serif);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.export-btn:hover{background:var(--accent);color:#fff;}
+
+@media(max-width:800px){.layout{grid-template-columns:1fr;}.left{border-right:none;border-bottom:1px solid var(--bg3);}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Research<span>IQ</span></div>
+  <div class="health"><div class="hdot" id="hdot"></div><span id="healthLabel">connecting...</span></div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT -->
+  <div class="left">
+
+    <div>
+      <div class="panel-title">New Research</div>
+      <textarea class="topic-input" id="topicInput" rows="3" placeholder="Enter any topic to research...&#10;e.g. 'The future of quantum computing'"></textarea>
+      <div style="margin:10px 0 6px;font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.1em;">Depth</div>
+      <div class="depth-row" style="margin-bottom:14px;">
+        <div class="depth-btn" onclick="setDepth('quick')">Quick</div>
+        <div class="depth-btn active" onclick="setDepth('standard')">Standard</div>
+        <div class="depth-btn" onclick="setDepth('deep')">Deep</div>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="startResearch()">
+        <span>▶</span> Run Research Agents
+      </button>
+    </div>
+
+    <div>
+      <div class="panel-title">Agent Pipeline</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="agent-card waiting" id="agentResearcher">
+          <div class="agent-header">
+            <div class="agent-icon" style="background:#e8f0ff;color:#2d4a8a;">R</div>
+            <div><div class="agent-name">Researcher</div><div class="agent-role">Gathers facts & angles</div></div>
+            <div class="agent-status" id="statusResearcher">Waiting</div>
+          </div>
+          <div class="agent-msg" id="msgResearcher">Ready to research your topic</div>
+        </div>
+        <div style="text-align:center;font-size:18px;color:var(--ink3);">↓</div>
+        <div class="agent-card waiting" id="agentCritic">
+          <div class="agent-header">
+            <div class="agent-icon" style="background:#fff3e8;color:#c87820;">C</div>
+            <div><div class="agent-name">Critic</div><div class="agent-role">Finds gaps & biases</div></div>
+            <div class="agent-status" id="statusCritic">Waiting</div>
+          </div>
+          <div class="agent-msg" id="msgCritic">Reviews research quality</div>
+        </div>
+        <div style="text-align:center;font-size:18px;color:var(--ink3);">↓</div>
+        <div class="agent-card waiting" id="agentWriter">
+          <div class="agent-header">
+            <div class="agent-icon" style="background:#e8f5ec;color:#2a7a4a;">W</div>
+            <div><div class="agent-name">Writer</div><div class="agent-role">Writes final report</div></div>
+            <div class="agent-status" id="statusWriter">Waiting</div>
+          </div>
+          <div class="agent-msg" id="msgWriter">Synthesizes the final report</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-title">History</div>
+      <div id="historyList"><div style="font-size:12px;color:var(--ink3);">No research yet</div></div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🔬</div>
+      <div class="empty-title">Multi-Agent Research</div>
+      <div class="empty-sub">Enter a topic and let 3 specialized AI agents<br/>research, critique, and write a full report</div>
+    </div>
+    <div id="reportPanel" style="display:none;">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="report-header">
+        <div class="report-topic" id="reportTopic"></div>
+        <div class="report-title" id="reportTitle">Researching...</div>
+        <div class="report-meta" id="reportMeta"></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('report')">Final Report</div>
+        <div class="tab" onclick="showTab('research')">Researcher Output</div>
+        <div class="tab" onclick="showTab('critique')">Critic Output</div>
+      </div>
+      <div class="tab-content active" id="tabReport">
+        <div class="report-body" id="reportBody"><div style="color:var(--ink3);font-size:14px;">Waiting for Writer agent...</div></div>
+        <button class="export-btn" onclick="exportReport()">↓ Export as Markdown</button>
+      </div>
+      <div class="tab-content" id="tabResearch">
+        <div class="raw-output" id="rawResearch">Waiting for Researcher agent...</div>
+      </div>
+      <div class="tab-content" id="tabCritique">
+        <div class="raw-output" id="rawCritique">Waiting for Critic agent...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+const WS_BASE = 'ws://localhost:8001/ws';
+
+let selectedDepth = 'standard';
+let currentSessionId = null;
+let ws = null;
+let history = [];
+let currentReport = '';
+let currentResearch = '';
+let currentCritique = '';
+
+function setDepth(d) {
+  selectedDepth = d;
+  document.querySelectorAll('.depth-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === d));
+}
+
+async function startResearch() {
+  const topic = document.getElementById('topicInput').value.trim();
+  if (!topic) { alert('Please enter a topic'); return; }
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').innerHTML = '<span class="spinner"></span> Running agents...';
+
+  // Reset UI
+  resetAgents();
+  showReportPanel(topic);
+  currentReport = ''; currentResearch = ''; currentCritique = '';
+
+  try {
+    const res = await fetch(`${API}/api/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, depth: selectedDepth })
+    });
+    const data = await res.json();
+    currentSessionId = data.session_id;
+    // Connect WS first, then start polling as fallback
+    connectWS(data.session_id, topic);
+    // Fallback: poll every 3s in case WS misses events
+    pollResults(data.session_id, topic);
+  } catch(e) {
+    alert('Backend not running. Start the server first.');
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').innerHTML = '<span>▶</span> Run Research Agents';
+  }
+}
+
+function connectWS(sessionId, topic) {
+  ws = new WebSocket(`${WS_BASE}/${sessionId}`);
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    handleEvent(msg.event, msg.data, topic);
+  };
+  ws.onerror = () => console.log('WS error');
+}
+
+function handleEvent(event, data, topic) {
+  if (event === 'agent_start') {
+    setAgentActive(data.agent, data.message);
+    setProgress((data.step - 1) / data.total * 100);
+  } else if (event === 'agent_complete') {
+    setAgentComplete(data.agent, data.output);
+    if (data.agent === 'Researcher') {
+      currentResearch = data.output;
+      document.getElementById('rawResearch').textContent = data.output;
+    } else if (data.agent === 'Critic') {
+      currentCritique = data.output;
+      document.getElementById('rawCritique').textContent = data.output;
+    } else if (data.agent === 'Writer') {
+      currentReport = data.output;
+      renderReport(data.output, topic);
+    }
+  } else if (event === 'pipeline_complete') {
+    setProgress(100);
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').innerHTML = '<span>▶</span> Run Research Agents';
+    addToHistory(topic, sessionId => currentSessionId);
+  }
+}
+
+function setAgentActive(agentName, msg) {
+  const key = agentName;
+  const card = document.getElementById(`agent${key}`);
+  const status = document.getElementById(`status${key}`);
+  const msgEl = document.getElementById(`msg${key}`);
+  if (card) { card.className = 'agent-card active'; }
+  if (status) status.innerHTML = '<span class="spinner"></span>';
+  if (msgEl) msgEl.textContent = msg;
+}
+
+function setAgentComplete(agentName, output) {
+  const card = document.getElementById(`agent${agentName}`);
+  const status = document.getElementById(`status${agentName}`);
+  const msgEl = document.getElementById(`msg${agentName}`);
+  if (card) card.className = 'agent-card complete';
+  if (status) status.textContent = '✓ Done';
+  if (msgEl) msgEl.textContent = output.slice(0, 80) + '...';
+}
+
+function resetAgents() {
+  ['Researcher','Critic','Writer'].forEach(a => {
+    const card = document.getElementById(`agent${a}`);
+    const status = document.getElementById(`status${a}`);
+    if (card) card.className = 'agent-card waiting';
+    if (status) status.textContent = 'Waiting';
+  });
+}
+
+function showReportPanel(topic) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('reportPanel').style.display = 'block';
+  document.getElementById('reportTopic').textContent = topic.toUpperCase();
+  document.getElementById('reportTitle').textContent = 'Running agents...';
+  document.getElementById('progressFill').style.width = '5%';
+  document.getElementById('reportBody').innerHTML = '<div style="color:var(--ink3);font-size:14px;">Waiting for agents to complete...</div>';
+}
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function renderReport(markdown, topic) {
+  // Simple markdown to HTML
+  let html = markdown
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[hul])/gm, '');
+
+  // Extract title from first H1
+  const titleMatch = markdown.match(/^# (.+)$/m);
+  if (titleMatch) {
+    document.getElementById('reportTitle').textContent = titleMatch[1];
+  } else {
+    document.getElementById('reportTitle').textContent = topic;
+  }
+
+  document.getElementById('reportBody').innerHTML = `<p>${html}</p>`;
+  document.getElementById('reportMeta').innerHTML = `
+    <span class="report-badge">3 Agents</span>
+    <span class="report-badge">${selectedDepth} depth</span>
+    <span class="report-badge">${new Date().toLocaleDateString()}</span>
+  `;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['report','research','critique'][i] === tab));
+  document.querySelectorAll('.tab-content').forEach((t,i) => t.classList.toggle('active', ['tabReport','tabResearch','tabCritique'][i] === `tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`));
+}
+
+function addToHistory(topic) {
+  history.unshift({ topic, id: currentSessionId, time: new Date().toLocaleTimeString() });
+  const list = document.getElementById('historyList');
+  list.innerHTML = history.slice(0,8).map(h => `
+    <div class="history-item">
+      <div class="history-topic">${h.topic}</div>
+      <div class="history-meta">${h.time} &middot; ${selectedDepth}</div>
+    </div>`).join('');
+}
+
+function exportReport() {
+  if (!currentReport) return;
+  const blob = new Blob([currentReport], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `research-${Date.now()}.md`;
+  a.click();
+}
+
+// Polling fallback
+let pollInterval = null;
+let lastReviewCount = 0;
+
+function pollResults(sessionId, topic) {
+  if (pollInterval) clearInterval(pollInterval);
+  lastReviewCount = 0;
+  
+  pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/api/research/${sessionId}`);
+      const data = await res.json();
+      
+      // Update agent cards based on status
+      if (data.research) {
+        setAgentComplete('Researcher', data.research.output);
+        document.getElementById('rawResearch').textContent = data.research.output;
+        currentResearch = data.research.output;
+        setProgress(33);
+      }
+      if (data.critique) {
+        setAgentComplete('Critic', data.critique.output);
+        document.getElementById('rawCritique').textContent = data.critique.output;
+        currentCritique = data.critique.output;
+        setProgress(66);
+      }
+      if (data.report) {
+        setAgentComplete('Writer', data.report.output);
+        currentReport = data.report.output;
+        renderReport(data.report.output, data.topic);
+        setProgress(100);
+      }
+      
+      if (data.status === 'complete') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        document.getElementById('runBtn').disabled = false;
+        document.getElementById('runBtn').innerHTML = '<span>▶</span> Run Research Agents';
+        addToHistory(topic);
+      }
+      
+      if (data.status === 'running') {
+        // Show which agent is active
+        if (!data.research) setAgentActive('Researcher', 'Researching ' + data.topic + '...');
+        else if (!data.critique) setAgentActive('Critic', 'Analyzing research...');
+        else if (!data.report) setAgentActive('Writer', 'Writing report...');
+      }
+      
+    } catch(e) { console.log('Poll error:', e); }
+  }, 2000);
+}
+
+// Health check
+fetch(`${API}/api/health`).then(r => r.json()).then(d => {
+  document.getElementById('hdot').style.background = '#4ab870';
+  document.getElementById('healthLabel').textContent = d.groq_available ? 'Groq AI Ready' : 'Demo Mode';
+}).catch(() => {
+  document.getElementById('hdot').style.background = '#b83838';
+  document.getElementById('healthLabel').textContent = 'Backend offline';
+});
+</script>
+</body>
+</html>

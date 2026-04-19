@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
-# ── Groq ──────────────────────────────────────────────────────────────────────
+# ── Groq ───────────────────────────────────────────────────────────────────
 try:
     from groq import Groq
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
